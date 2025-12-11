@@ -73,6 +73,7 @@ class BirthdayManager(private val context: Context) {
 
             if (contacts.isNotEmpty()) {
                 contactDao.insertContacts(contacts)
+                scheduleMidnightBirthdayCheck()
                 prefs.edit().putLong(KEY_LAST_SCAN, System.currentTimeMillis()).apply()
 
                 val withBirthdays = contacts.count { it.dateOfBirth != null }
@@ -102,6 +103,7 @@ class BirthdayManager(private val context: Context) {
             if (contacts.isNotEmpty()) {
                 val contact = contacts.first()
                 contactDao.updateDateOfBirth(contact.contactId, dateOfBirth)
+                scheduleMidnightBirthdayCheck()
                 Log.d(TAG, "✅ Updated birthday for ${contact.name}: $dateOfBirth")
                 return@withContext true
             } else {
@@ -110,6 +112,7 @@ class BirthdayManager(private val context: Context) {
                 if (scannedContact != null) {
                     val updatedContact = scannedContact.copy(dateOfBirth = dateOfBirth)
                     contactDao.insertContact(updatedContact)
+                    scheduleMidnightBirthdayCheck()
                     Log.d(TAG, "✅ Added new contact with birthday: ${updatedContact.name}")
                     return@withContext true
                 }
@@ -173,13 +176,14 @@ class BirthdayManager(private val context: Context) {
             }
 
             val calendar = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0)
+                timeInMillis = System.currentTimeMillis()
+                set(Calendar.HOUR_OF_DAY, 0)  // Midnight
                 set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
 
-                // If midnight has passed today, schedule for tomorrow
                 if (timeInMillis <= System.currentTimeMillis()) {
-                    add(Calendar.DAY_OF_MONTH, 1)
+                    add(Calendar.DAY_OF_YEAR, 1)  // Schedule for tomorrow
                 }
             }
 
@@ -222,7 +226,7 @@ class BirthdayManager(private val context: Context) {
             }
 
             val calendar = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 7) // 7 AM
+                set(Calendar.HOUR_OF_DAY, 8) // 8 AM
                 set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 0)
 
@@ -372,6 +376,7 @@ class BirthdayManager(private val context: Context) {
             }
 
             contactDao.insertContact(contact)
+            scheduleMidnightBirthdayCheck()
             Log.d(TAG, "✅ Contact added: ${contact.name}")
             true
         } catch (e: Exception) {
@@ -422,4 +427,38 @@ class BirthdayManager(private val context: Context) {
             Log.e(TAG, "❌ Error updating preferences", e)
         }
     }
+    // Add to BirthdayManager.kt
+
+    /**
+     * Check if daily alarm is already scheduled
+     */
+    fun isAlarmScheduled(): Boolean {
+        return try {
+            val intent = Intent(context, BirthdayReceiver::class.java).apply {
+                action = "ACTION_BIRTHDAY_CHECK"
+            }
+
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                9999,
+                intent,
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val isScheduled = pendingIntent != null
+
+            if (isScheduled) {
+                Log.d(TAG, "✅ Alarm is scheduled")
+            } else {
+                Log.d(TAG, "❌ Alarm is NOT scheduled")
+            }
+
+            isScheduled
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking alarm status", e)
+            false
+        }
+    }
+
 }

@@ -3,7 +3,9 @@ package com.example.groot.birthday
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.example.groot.TTSManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +24,7 @@ class BirthdayReceiver : BroadcastReceiver() {
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onReceive(context: Context, intent: Intent) {
         Log.d(TAG, "📡 Received broadcast: ${intent.action}")
 
@@ -52,6 +55,7 @@ class BirthdayReceiver : BroadcastReceiver() {
     /**
      * Handle midnight birthday check - Send wishes via SMS/Email
      */
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun handleMidnightBirthdayCheck(context: Context) {
         scope.launch {
             try {
@@ -159,6 +163,7 @@ class BirthdayReceiver : BroadcastReceiver() {
     /**
      * Send birthday wish for specific contact
      */
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun handleSendBirthdayWish(context: Context, contactId: String) {
         scope.launch {
             try {

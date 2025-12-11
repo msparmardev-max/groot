@@ -2,6 +2,7 @@ package com.example.groot.ui
 
 import android.app.DatePickerDialog
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -41,6 +42,31 @@ class ContactActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         birthdayManager = BirthdayManager(this)
+        birthdayManager.scheduleMidnightBirthdayCheck()
+        //✅ ADD THIS DATABASE CHECK:
+        lifecycleScope.launch {
+            try {
+                val db = com.example.groot.birthday.BirthdayDatabase.getDatabase(this@ContactActivity)
+                val allContacts = db.contactDao().getAllContacts()
+
+                Log.d("ContactActivity", "═══════════════════════════════")
+                Log.d("ContactActivity", "📊 DATABASE CHECK")
+                Log.d("ContactActivity", "Total contacts: ${allContacts.size}")
+
+                val withBirthdays = allContacts.filter { it.dateOfBirth != null }
+                Log.d("ContactActivity", "With birthdays: ${withBirthdays.size}")
+                Log.d("ContactActivity", "═══════════════════════════════")
+
+            } catch (e: Exception) {
+                Log.e("ContactActivity", "❌ Database check failed", e)
+            }
+        }
+
+        setContent {
+            GrootTheme {
+                ContactManagementScreen()
+            }
+        }
 
         setContent {
             GrootTheme {
@@ -61,8 +87,14 @@ class ContactActivity : ComponentActivity() {
         var showAddContactDialog by remember { mutableStateOf(false) }
 
         // Load contacts on first launch
+        // Load contacts on first launch
         LaunchedEffect(Unit) {
             loadContacts { contacts = it }
+            lifecycleScope.launch {
+                val allContacts = birthdayManager.getAllContacts() // ✅ Changed
+                contacts = allContacts
+                Log.d("ContactActivity", "📋 Loaded ${allContacts.size} contacts")
+            }
         }
 
         // Filter contacts based on search
@@ -196,6 +228,113 @@ class ContactActivity : ComponentActivity() {
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
+                // ✅ ADD THIS NEW ROW:
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Birthday Detection Test
+                    Button(
+                        onClick = {
+                            lifecycleScope.launch {
+                                try {
+                                    Log.d("ContactActivity", "═══════════════════════════════")
+                                    Log.d("ContactActivity", "🎂 BIRTHDAY DETECTION TEST")
+
+                                    val today = java.util.Calendar.getInstance()
+                                    val todayDay = today.get(java.util.Calendar.DAY_OF_MONTH)
+                                    val todayMonth = today.get(java.util.Calendar.MONTH) + 1
+                                    val todayYear = today.get(java.util.Calendar.YEAR)
+
+                                    Log.d("ContactActivity", "Today: $todayDay/$todayMonth/$todayYear")
+                                    Log.d("ContactActivity", "───────────────────────────────")
+
+                                    val allContacts = birthdayManager.getAllContacts()
+                                    val withBirthdays = allContacts.filter { it.dateOfBirth != null }
+
+                                    Log.d("ContactActivity", "Checking ${withBirthdays.size} contacts:")
+
+                                    var foundCount = 0
+                                    withBirthdays.forEach { contact ->
+                                        val isBirthdayToday = contact.isBirthdayToday()
+
+                                        Log.d("ContactActivity", "")
+                                        Log.d("ContactActivity", "Name: ${contact.name}")
+                                        Log.d("ContactActivity", "DOB: ${contact.dateOfBirth}")
+                                        Log.d("ContactActivity", "isBirthdayToday: $isBirthdayToday")
+
+                                        if (isBirthdayToday) {
+                                            foundCount++
+                                            Log.d("ContactActivity", "🎉 BIRTHDAY MATCH!")
+                                        }
+                                    }
+
+                                    Log.d("ContactActivity", "───────────────────────────────")
+                                    Log.d("ContactActivity", "Total birthdays today: $foundCount")
+                                    Log.d("ContactActivity", "═══════════════════════════════")
+
+                                    Toast.makeText(
+                                        this@ContactActivity,
+                                        "Found $foundCount birthdays today! Check Logcat",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+
+                                } catch (e: Exception) {
+                                    Log.e("ContactActivity", "❌ Test failed", e)
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63))
+                    ) {
+                        Text("🧪 Test", fontSize = 12.sp)
+                    }
+
+                    // Add Test Contact
+                    Button(
+                        onClick = {
+                            lifecycleScope.launch {
+                                val today = java.util.Calendar.getInstance()
+                                val todayDay = today.get(java.util.Calendar.DAY_OF_MONTH)
+                                val todayMonth = today.get(java.util.Calendar.MONTH) + 1
+
+                                val testContact = Contact(
+                                    contactId = "test_${System.currentTimeMillis()}",
+                                    name = "Test Birthday",
+                                    phoneNumber = "+919999999999",
+                                    email = "test@example.com",
+                                    dateOfBirth = String.format("%02d/%02d/1990", todayDay, todayMonth),
+                                    isAutoWishEnabled = true,
+                                    wishViaSMS = true,
+                                    wishViaEmail = true
+                                )
+
+                                val success = birthdayManager.addContact(testContact)
+
+                                if (success) {
+                                    loadContacts { contacts = it }
+                                    Toast.makeText(
+                                        this@ContactActivity,
+                                        "✅ Test contact added!",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                } else {
+                                    Toast.makeText(
+                                        this@ContactActivity,
+                                        "❌ Failed",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C27B0))
+                    ) {
+                        Text("➕ Test", fontSize = 12.sp)
+                    }
+                }
 
                 // Search Bar
                 OutlinedTextField(
@@ -830,7 +969,8 @@ class ContactActivity : ComponentActivity() {
 
     private fun loadContacts(onLoaded: (List<Contact>) -> Unit) {
         lifecycleScope.launch {
-            val allContacts = birthdayManager.getAllBirthdays()
+            //val allContacts = birthdayManager.getAllBirthdays()
+            val allContacts = birthdayManager.getAllContacts()
             onLoaded(allContacts)
         }
     }
@@ -846,6 +986,7 @@ class ContactActivity : ComponentActivity() {
         var month by remember { mutableStateOf("") }
         var year by remember { mutableStateOf("") }
         var includeBirthday by remember { mutableStateOf(false) }
+        var email by remember { mutableStateOf("") }
 
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -900,6 +1041,20 @@ class ContactActivity : ComponentActivity() {
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
+
+                    // ✅ ADD THIS EMAIL FIELD:
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email (Optional)") },
+                        placeholder = { Text("example@gmail.com") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = {
+                            Icon(Icons.Default.Email, "Email")
+                        }
+                    )
 
                     Divider()
 
@@ -1024,6 +1179,39 @@ class ContactActivity : ComponentActivity() {
                             }
 
                             onConfirm(name.trim(), "+91$phoneNumber", birthday)
+
+                            // ✅ UPDATED: Add contact with email
+                            lifecycleScope.launch {
+                                val newContact = Contact(
+                                    contactId = java.util.UUID.randomUUID().toString(),
+                                    name = name.trim(),
+                                    phoneNumber = "+91$phoneNumber",
+                                    email = if (email.isNotBlank()) email.trim() else null, // ✅ ADDED
+                                    dateOfBirth = birthday,
+                                    isAutoWishEnabled = true,
+                                    wishViaSMS = true,
+                                    wishViaEmail = email.isNotBlank() // ✅ Auto-enable if email provided
+                                )
+
+                                val success = birthdayManager.addContact(newContact)
+
+                                if (success) {
+                                    //loadContacts { contacts = it }
+                                    Toast.makeText(
+                                        this@ContactActivity,
+                                        "✅ Contact added: ${name.trim()}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                } else {
+                                    Toast.makeText(
+                                        this@ContactActivity,
+                                        "❌ Failed to add contact",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+
+                                //showAddContactDialog = false
+                            }
                         }
                     },
                     enabled = name.isNotBlank() && phoneNumber.isNotBlank() && phoneNumber.length == 10
