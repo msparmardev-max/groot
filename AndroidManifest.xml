@@ -179,7 +179,7 @@
             <intent-filter>
                 <action android:name="com.example.groot.ACTION_BIRTHDAY_CHECK" />
                 <action android:name="com.example.groot.ACTION_MORNING_REMINDER" />
-                <action android:name="com.example.groot.SEND_BIRTHDAY_Wish" />
+                <action android:name="com.example.groot.SEND_BIRTHDAY_WISH" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
@@ -246,4 +246,5 @@
 
 
 </manifest>
+
 
