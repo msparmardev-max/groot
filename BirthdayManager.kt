@@ -435,12 +435,12 @@ class BirthdayManager(private val context: Context) {
     fun isAlarmScheduled(): Boolean {
         return try {
             val intent = Intent(context, BirthdayReceiver::class.java).apply {
-                action = "CHECK_BIRTHDAYS"
+                action = "ACTION_BIRTHDAY_CHECK"
             }
 
             val pendingIntent = PendingIntent.getBroadcast(
                 context,
-                12345,
+                9999,
                 intent,
                 PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
             )
@@ -460,4 +460,5 @@ class BirthdayManager(private val context: Context) {
             false
         }
     }
+
 }
