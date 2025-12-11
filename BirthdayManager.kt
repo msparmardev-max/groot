@@ -166,52 +166,146 @@ class BirthdayManager(private val context: Context) {
      * Schedule daily midnight birthday check
      */
     fun scheduleMidnightBirthdayCheck() {
-        try {
-            // Check if permission is available (Android 12+)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (!alarmManager.canScheduleExactAlarms()) {
-                    Log.w(TAG, "⚠️ Cannot schedule exact alarms. Permission not granted.")
-                    return
-                }
+    try {
+        // ✅ STEP 1: Check exact alarm permission (Android 12+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!alarmManager.canScheduleExactAlarms()) {
+                Log.e(TAG, "❌ CRITICAL: Exact Alarm Permission NOT granted!")
+                Log.e(TAG, "User needs to enable 'Alarms & reminders' permission")
+                
+                // ⚠️ Optional: Show notification to user
+                showExactAlarmPermissionNotification()
+                return
+            } else {
+                Log.d(TAG, "✅ Exact Alarm Permission granted")
             }
-
-            val calendar = Calendar.getInstance().apply {
-                timeInMillis = System.currentTimeMillis()
-                set(Calendar.HOUR_OF_DAY, 0)  // Midnight
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-
-                if (timeInMillis <= System.currentTimeMillis()) {
-                    add(Calendar.DAY_OF_YEAR, 1)  // Schedule for tomorrow
-                }
-            }
-
-            val intent = Intent(context, BirthdayReceiver::class.java).apply {
-                action = ACTION_BIRTHDAY_CHECK
-            }
-
-            val pendingIntent = PendingIntent.getBroadcast(
-                context,
-                9999, // Unique request code
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-
-            // Use setRepeating for daily check
-            alarmManager.setRepeating(
-                AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
-                AlarmManager.INTERVAL_DAY,
-                pendingIntent
-            )
-
-            Log.d(TAG, "⏰ Scheduled midnight birthday check at ${calendar.time}")
-
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Error scheduling midnight check", e)
         }
+
+        // ✅ STEP 2: Calculate next midnight
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = System.currentTimeMillis()
+            
+            // Set to midnight (00:00:00.000)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 10) // ✅ 10 seconds after midnight for stability
+            set(Calendar.MILLISECOND, 0)
+
+            // If time has passed today, schedule for tomorrow
+            if (timeInMillis <= System.currentTimeMillis()) {
+                add(Calendar.DAY_OF_YEAR, 1)
+            }
+        }
+
+        // ✅ STEP 3: Create Intent
+        val intent = Intent(context, BirthdayReceiver::class.java).apply {
+            action = ACTION_BIRTHDAY_CHECK
+            // Add extra data for debugging
+            putExtra("scheduled_time", calendar.timeInMillis)
+            putExtra("scheduled_date", calendar.time.toString())
+        }
+
+        // ✅ STEP 4: Create PendingIntent
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            9999, // Unique request code
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // ✅ STEP 5: Cancel any existing alarm
+        try {
+            alarmManager.cancel(pendingIntent)
+            Log.d(TAG, "🗑️ Cancelled existing alarm")
+        } catch (e: Exception) {
+            Log.w(TAG, "No existing alarm to cancel")
+        }
+
+        // ✅ STEP 6: Schedule new alarm
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                // Use setExactAndAllowWhileIdle for better reliability
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
+                Log.d(TAG, "⏰ setExactAndAllowWhileIdle() used")
+            } else {
+                // Fallback for older Android versions
+                alarmManager.setExact(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
+                Log.d(TAG, "⏰ setExact() used (old Android)")
+            }
+
+            // ✅ STEP 7: Log success
+            val now = Calendar.getInstance()
+            val hoursUntil = (calendar.timeInMillis - now.timeInMillis) / (1000 * 60 * 60)
+            
+            Log.d(TAG, "═══════════════════════════════")
+            Log.d(TAG, "✅ MIDNIGHT ALARM SCHEDULED!")
+            Log.d(TAG, "Current Time: ${now.time}")
+            Log.d(TAG, "Alarm Time: ${calendar.time}")
+            Log.d(TAG, "Hours until alarm: $hoursUntil")
+            Log.d(TAG, "Request Code: 9999")
+            Log.d(TAG, "═══════════════════════════════")
+
+        } catch (e: SecurityException) {
+            Log.e(TAG, "❌ SecurityException scheduling alarm", e)
+            Log.e(TAG, "This happens if SCHEDULE_EXACT_ALARM permission denied")
+        }
+
+    } catch (e: Exception) {
+        Log.e(TAG, "❌ FATAL: Error scheduling midnight check", e)
+        e.printStackTrace()
     }
+}
+
+/**
+ * ✅ NEW: Show notification if exact alarm permission needed
+ */
+private fun showExactAlarmPermissionNotification() {
+    try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Create intent to open alarm settings
+            val intent = Intent(
+                android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
+            )
+            
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val notification = androidx.core.app.NotificationCompat.Builder(
+                context,
+                "groot_birthday_channel"
+            )
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle("⚠️ Birthday Feature Needs Permission")
+                .setContentText("Enable 'Alarms & reminders' for auto birthday wishes")
+                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build()
+
+            val notificationManager = androidx.core.app.NotificationManagerCompat.from(context)
+            
+            try {
+                notificationManager.notify(12345, notification)
+            } catch (e: SecurityException) {
+                Log.e(TAG, "Notification permission denied")
+            }
+        }
+    } catch (e: Exception) {
+        Log.e(TAG, "Error showing permission notification", e)
+    }
+}
 
     /**
      * Schedule morning reminder for specific birthday contact
@@ -433,32 +527,37 @@ class BirthdayManager(private val context: Context) {
      * Check if daily alarm is already scheduled
      */
     fun isAlarmScheduled(): Boolean {
-        return try {
-            val intent = Intent(context, BirthdayReceiver::class.java).apply {
-                action = "ACTION_BIRTHDAY_CHECK"
-            }
-
-            val pendingIntent = PendingIntent.getBroadcast(
-                context,
-                9999,
-                intent,
-                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
-            )
-
-            val isScheduled = pendingIntent != null
-
-            if (isScheduled) {
-                Log.d(TAG, "✅ Alarm is scheduled")
-            } else {
-                Log.d(TAG, "❌ Alarm is NOT scheduled")
-            }
-
-            isScheduled
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking alarm status", e)
-            false
+    return try {
+        val intent = Intent(context, BirthdayReceiver::class.java).apply {
+            action = ACTION_BIRTHDAY_CHECK
         }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            9999,
+            intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val isScheduled = pendingIntent != null
+
+        Log.d(TAG, if (isScheduled) "✅ Alarm IS scheduled" else "❌ Alarm NOT scheduled")
+        
+        // Also check permission
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val hasPermission = alarmManager.canScheduleExactAlarms()
+            Log.d(TAG, if (hasPermission) "✅ Permission granted" else "❌ Permission denied")
+            
+            return isScheduled && hasPermission
+        }
+        
+        isScheduled
+
+    } catch (e: Exception) {
+        Log.e(TAG, "Error checking alarm status", e)
+        false
     }
+}
 
 }
+
