@@ -179,7 +179,7 @@
             <intent-filter>
                 <action android:name="com.example.groot.ACTION_BIRTHDAY_CHECK" />
                 <action android:name="com.example.groot.ACTION_MORNING_REMINDER" />
-                <action android:name="com.example.groot.SEND_BIRTHDAY_SMS" />
+                <action android:name="com.example.groot.SEND_BIRTHDAY_Wish" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
@@ -232,7 +232,7 @@
         <receiver
             android:name=".ReminderActionReceiver"
             android:enabled="true"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="ACTION_REMINDER_YES" />
                 <action android:name="ACTION_REMINDER_DONE" />
@@ -246,3 +246,4 @@
 
 
 </manifest>
+
