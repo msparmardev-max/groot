@@ -252,11 +252,61 @@ class OfflineIntelligence {
                     handled = true
                 )
             }
+            // Personality mode commands
+            lowerCommand.contains("be funny") ||
+                    lowerCommand.contains("comedy mode") ||
+                    lowerCommand.contains("मज़ाक") -> {
+                return OfflineResponse(
+                    reply = if (isHindi) "ठीक है! कॉमेडी मोड चालू! 😄 अब मज़ा आएगा!"
+                    else "Alright! Comedy mode activated! 😄 Let's have some fun!",
+                    action = "set_mode_funny",
+                    target = "",
+                    handled = true
+                )
+            }
+
+            lowerCommand.contains("be professional") ||
+                    lowerCommand.contains("formal mode") ||
+                    lowerCommand.contains("प्रोफेशनल") -> {
+                return OfflineResponse(
+                    reply = if (isHindi) "समझ गया। प्रोफेशनल मोड सक्रिय।"
+                    else "Understood. Professional mode enabled.",
+                    action = "set_mode_professional",
+                    target = "",
+                    handled = true
+                )
+            }
+
+            lowerCommand.contains("be friendly") ||
+                    lowerCommand.contains("friendly mode") ||
+                    lowerCommand.contains("दोस्ताना") -> {
+                return OfflineResponse(
+                    reply = if (isHindi) "बिल्कुल! दोस्ताना मोड चालू! 😊"
+                    else "Absolutely! Friendly mode activated! 😊",
+                    action = "set_mode_friendly",
+                    target = "",
+                    handled = true
+                )
+            }
+
+            lowerCommand.contains("be serious") ||
+                    lowerCommand.contains("serious mode") ||
+                    lowerCommand.contains("गंभीर") -> {
+                return OfflineResponse(
+                    reply = if (isHindi) "ठीक है। गंभीर मोड।"
+                    else "Acknowledged. Serious mode.",
+                    action = "set_mode_serious",
+                    target = "",
+                    handled = true
+                )
+            }
             // Greetings
             // Greetings - WITH AUTO MIC RESTART
-            lowerCommand.contains("hello") ||
-                    lowerCommand.contains("hi") ||
-                    lowerCommand.contains("hey") ||
+            lowerCommand.contains("hello groot") ||
+                    lowerCommand.contains(" hello groot") ||
+                    lowerCommand.contains(" hello groot") ||
+                    lowerCommand.contains("hi Groot") ||
+                    lowerCommand.contains("hey Groot") ||
                     lowerCommand.contains("namaste") ||
                     lowerCommand.contains("नमस्ते") -> {
                 val greeting = ResponseVariations.getTimeBasedGreeting(isHindi)
@@ -294,9 +344,9 @@ class OfflineIntelligence {
                 )
             }
 
-            lowerCommand.contains("hello") ||
-                    lowerCommand.contains("hi") ||
-                    lowerCommand.contains("hey") ||
+            lowerCommand.contains("hello Groot") ||
+                    lowerCommand.contains("hi groot") ||
+                    lowerCommand.contains("hey groot") ||
                     lowerCommand.contains("namaste") ||
                     lowerCommand.contains("नमस्ते") -> {
                 val greeting = ResponseVariations.getTimeBasedGreeting(isHindi)
@@ -305,7 +355,7 @@ class OfflineIntelligence {
 
                 return OfflineResponse(
                     reply = "$greeting! $intro",
-                    action = "prompt_continue",
+                    action = "greeting_with_personality",
                     target = "",
                     handled = true
                 )
@@ -358,14 +408,21 @@ class OfflineIntelligence {
             lowerCommand.contains("call") ||
                     lowerCommand.contains("phone") ||
                     lowerCommand.contains("कॉल") ||
-                    lowerCommand.contains("dial") -> {
-                val contact = extractContact(lowerCommand)
-                if (contact.isNotEmpty()) {
+                    lowerCommand.contains("dial") ||
+                    lowerCommand.contains("लगा") -> {
+
+                val callData = extractCallImproved(command)
+
+                Log.i(TAG, "🔍 Call extraction: contact='${callData.contact}', isValid=${callData.isValid}")
+
+                Log.i(TAG, "📞 Call extraction: contact='${callData.contact}', isValid=${callData.isValid}")
+
+                if (callData.isValid && callData.contact.isNotEmpty()) {
                     return OfflineResponse(
-                        reply = if (isHindi) "$contact को कॉल कर रहा हूँ"
-                        else "Calling $contact",
+                        reply = if (isHindi) "${callData.contact} को कॉल कर रहा हूँ"
+                        else "Calling ${callData.contact}",
                         action = "call",
-                        target = contact,
+                        target = callData.contact,
                         handled = true
                     )
                 } else {
@@ -379,10 +436,11 @@ class OfflineIntelligence {
                 }
             }
 
+
             // SMS commands - WITH DISAMBIGUATION
             lowerCommand.contains("message") ||
                     lowerCommand.contains("ko message karo") ||
-                    lowerCommand.contains("send") ||
+                    lowerCommand.contains("send message") ||
                     lowerCommand.contains("text") ||
                     lowerCommand.contains("sms") ||
                     lowerCommand.contains("मैसेज") -> {
@@ -600,9 +658,9 @@ class OfflineIntelligence {
             }
 
             // Calculations
-            lowerCommand.contains("calculate") ||
-                    lowerCommand.matches(Regex(".*[0-9+\\-*/].*")) -> {
-                val result = calculate(lowerCommand)
+           // lowerCommand.contains("calculate") ||
+                    //lowerCommand.matches(Regex(".*[0-9+\\-*/].*")) -> {
+               /* val result = calculate(lowerCommand)
                 if (result != null) {
                     return OfflineResponse(
                         reply = if (isHindi) "परिणाम: $result"
@@ -612,7 +670,7 @@ class OfflineIntelligence {
                         handled = true
                     )
                 }
-            }
+            } */
 
             // Basic Q&A
             lowerCommand.contains("capital") ||
@@ -664,6 +722,229 @@ class OfflineIntelligence {
                     )
                 }
             }
+            // ==================== WEATHER COMMANDS ====================
+
+// Current weather
+            lowerCommand.contains("weather") ||
+                    lowerCommand.contains("मौसम") ||
+                    lowerCommand.contains("mausam") ||
+                    lowerCommand.contains("temperature") ||
+                    lowerCommand.contains("तापमान") -> {
+                val location = extractLocation(command)
+                return OfflineResponse(
+                    reply = "",
+                    action = if (location != "current") "weather_city" else "get_weather",
+                    target = location,
+                    handled = true
+                )
+            }
+
+// Weather forecast
+            lowerCommand.contains("forecast") ||
+                    lowerCommand.contains("next 3 days") ||
+                    lowerCommand.contains("अगले 3 दिन") ||
+                    lowerCommand.contains("पूर्वानुमान") ||
+                    (lowerCommand.contains("weather") && lowerCommand.contains("tomorrow")) -> {
+                return OfflineResponse(
+                    reply = "",
+                    action = "weather_forecast",
+                    target = extractLocation(command),
+                    handled = true
+                )
+            }
+
+// Weather alerts
+            lowerCommand.contains("weather alert") ||
+                    lowerCommand.contains("mausam alert") ||
+                    lowerCommand.contains("मौसम चेतावनी") ||
+                    lowerCommand.contains("severe weather") -> {
+                return OfflineResponse(
+                    reply = "",
+                    action = "weather_alerts",
+                    target = "",
+                    handled = true
+                )
+            }
+
+// Tomorrow's weather check
+            lowerCommand.contains("will it rain tomorrow") ||
+                    lowerCommand.contains("कल बारिश") ||
+                    lowerCommand.contains("rain tomorrow") -> {
+                return OfflineResponse(
+                    reply = "",
+                    action = "check_tomorrow_weather",
+                    target = "rain",
+                    handled = true
+                )
+            }
+
+            lowerCommand.contains("will it be hot tomorrow") ||
+                    lowerCommand.contains("कल गर्मी") -> {
+                return OfflineResponse(
+                    reply = "",
+                    action = "check_tomorrow_weather",
+                    target = "hot",
+                    handled = true
+                )
+            }
+
+            // Umbrella reminder
+            lowerCommand.contains("remind me") &&
+                    (lowerCommand.contains("umbrella") || lowerCommand.contains("छाता")) -> {
+                return OfflineResponse(
+                    reply = "",
+                    action = "set_umbrella_reminder",
+                    target = extractReminderTime(command),
+                    handled = true
+                )
+            }
+
+            // Weather-based suggestions
+            lowerCommand.contains("should i take umbrella") ||
+                    lowerCommand.contains("क्या छाता") ||
+                    lowerCommand.contains("umbrella needed") -> {
+                return OfflineResponse(
+                    reply = "",
+                    action = "weather_suggestion",
+                    target = "umbrella",
+                    handled = true
+                )
+            }
+
+            lowerCommand.contains("what to wear") ||
+                    lowerCommand.contains("क्या पहनूं") ||
+                    lowerCommand.contains("kapde") ||
+                    lowerCommand.contains("kapde kaun se pahnu ") ||
+                    lowerCommand.contains("aaj mujhe kaun se kapde") ||
+                    lowerCommand.contains("kaun se kapde") ||
+                    lowerCommand.contains("kapde kaun se ") ||
+                    lowerCommand.contains("kapdon ka batao") ||
+                    lowerCommand.contains("kapdon ka batao yaar") ||
+                    lowerCommand.contains("clothes") -> {
+                Log.d(TAG, "Processing command: $command")
+                return OfflineResponse(
+                    reply = "",
+                    action = "weather_suggestion",
+                    target = "clothes",
+                    handled = true
+                )
+            }
+
+            // View weather reminders
+            lowerCommand.contains("so") && lowerCommand.contains("weather reminder") ||
+                    lowerCommand.contains("मौसम अनुस्मारक") -> {
+                return OfflineResponse(
+                    reply = "",
+                    action = "show_weather_reminders",
+                    target = "",
+                    handled = true
+                )
+            }
+
+            // Cancel weather reminders
+            lowerCommand.contains("cancel") && lowerCommand.contains("weather reminder") -> {
+                return OfflineResponse(
+                    reply = "",
+                    action = "cancel_weather_reminders",
+                    target = "",
+                    handled = true
+                )
+            }
+            // Weather suggestion queries
+            lowerCommand.contains("should i take umbrella") ||
+                    lowerCommand.contains("क्या छाता") ||
+                    lowerCommand.contains("umbrella") ||
+                    lowerCommand.contains("chhata") ||
+                    lowerCommand.contains("kya main chhata lekar bahar jaaun") ||
+                    lowerCommand.contains(" kya main chhata lekar bahar jaaun") ||
+                    lowerCommand.contains(" chhata lekar") ||
+                    lowerCommand.contains("chhata le jaaun") ||
+                    lowerCommand.contains("chhata le ke jaaun") ||
+                    lowerCommand.contains("kya mujhe chhata le jana chahie") ||
+                    lowerCommand.contains("kya mujhe chhata le jana chahiye") ||
+                    lowerCommand.contains("छाता") -> {
+                return OfflineResponse(
+                    reply = "",
+                    action = "weather_suggestion",
+                    target = "umbrella",
+                    handled = true
+                )
+            }
+            // ==================== REMINDER COMMANDS ====================
+
+            // Remind me to call/message/meet
+            lowerCommand.contains("remind me") ||
+                    lowerCommand.contains("remind") ||
+                    lowerCommand.contains("yad dila") ||
+                    lowerCommand.contains("yad dila dena") ||
+                    lowerCommand.contains("mujhe yad dila doge kya") ||
+                    lowerCommand.contains("yad dilana ") ||
+                    lowerCommand.contains("bad yad dila") ||
+                    lowerCommand.contains("याद दिला") -> {
+                return OfflineResponse(
+                    reply = "",
+                    action = "set_reminder",
+                    target = command, // Full command
+                    handled = true
+                )
+            }
+
+            // Show reminders
+            lowerCommand.contains("show") &&
+                    (lowerCommand.contains("reminder") || lowerCommand.contains("अनुस्मारक")) -> {
+                return OfflineResponse(
+                    reply = "",
+                    action = "show_reminders",
+                    target = "",
+                    handled = true
+                )
+            }
+
+            // Cancel reminders
+            lowerCommand.contains("cancel") &&
+                    (lowerCommand.contains("reminder") || lowerCommand.contains("अनुस्मारक")) -> {
+                return OfflineResponse(
+                    reply = "",
+                    action = "cancel_reminders",
+                    target = "",
+                    handled = true
+                )
+            }
+            // ==================== EMAIL COMMANDS ====================
+
+            lowerCommand.contains("mail") ||
+                    lowerCommand.contains("mel") ||
+                    lowerCommand.contains("email") ||
+                    lowerCommand.contains("e-mail") ||
+                    lowerCommand.contains("ईमेल") -> {
+
+                Log.d(TAG, "📧 Email command detected: $command")
+
+                // Check if recipient name is present
+                val hasRecipient = Regex("(\\w+)\\s+ko\\s+(?:mail|email)", RegexOption.IGNORE_CASE).find(command) != null ||
+                        Regex("(?:mail|email)\\s+(?:to)?\\s+(\\w+)", RegexOption.IGNORE_CASE).find(command) != null
+
+                if (hasRecipient) {
+                    // Full command with recipient
+                    Log.d(TAG, "📧 Recipient found in command")
+                    return OfflineResponse(
+                        reply = "",
+                        action = "send_email",
+                        target = command,
+                        handled = true
+                    )
+                } else {
+                    // No recipient - ask for it
+                    Log.d(TAG, "📧 No recipient, asking user")
+                    return OfflineResponse(
+                        reply = if (isHindi) "किसे email भेजना है sir?"
+                        else "sir, Who do you want to send email to?",
+                        action = "ask_email_recipient",
+                        target = "",
+                        handled = true
+                    )
+                }
+            }
         }
 
         // If we couldn't handle it offline
@@ -675,7 +956,39 @@ class OfflineIntelligence {
             handled = false
         )
     }
+    /**
+     * Extract location from weather command
+     */
+    private fun extractLocation(command: String): String {
+        val lowerCmd = command.lowercase()
 
+        // Pattern: "weather in [city]"
+        val pattern1 = Regex("weather in ([a-zA-Z\\s]+)", RegexOption.IGNORE_CASE)
+        pattern1.find(command)?.let {
+            return it.groupValues[1].trim()
+        }
+
+        // Pattern: "[city] का मौसम"
+        val pattern2 = Regex("([\\p{L}]+)\\s*का\\s*मौसम", RegexOption.IGNORE_CASE)
+        pattern2.find(command)?.let {
+            return it.groupValues[1].trim()
+        }
+
+        // Default to current location
+        return "current"
+    }
+    /**
+     * Extract reminder time from command
+     */
+    private fun extractReminderTime(command: String): String {
+        // Pattern: "at 7 AM", "7 बजे"
+        val pattern = Regex("(?:at|)\\s*(\\d+)\\s*(?:am|pm|बजे|)", RegexOption.IGNORE_CASE)
+        pattern.find(command)?.let {
+            return it.groupValues[1]
+        }
+
+        return "7" // Default to 7 AM
+    }
     private fun extractContact(command: String): String {
         val words = command.split(Regex("\\s+"))
         val callIndex = words.indexOfFirst {
@@ -774,6 +1087,205 @@ class OfflineIntelligence {
         }
 
         return SMSData("", "")
+    }
+
+    data class CallData(
+        val contact: String = "",
+        val isValid: Boolean = false
+    )
+
+    /**
+     * ULTIMATE CALL EXTRACTION - Handles ALL combinations including PHONE NUMBERS
+     */
+    private fun extractCallImproved(command: String): CallData {
+        val cleanedCommand = command
+            .replaceFirst("(?i)^(?:groot|hey|ok|alright)\\s+".toRegex(), "")
+            .trim()
+
+        Log.i(TAG, "🔍 Extracting call from: '$cleanedCommand'")
+
+        // ============ ACTION WORDS & FILLER WORDS TO REMOVE ============
+        val actionWords = listOf(
+            "laga", "लगा", "lagao", "लगाओ", "lag", "लग",
+            "kar", "कर", "karo", "करो", "krde", "कर दे", "kr", "करो",
+            "de", "दे", "dena", "दीजिए", "दो", "do",
+            "phone", "फोन", "call", "कॉल",
+            "yaar", "यार", "bhai", "भाई", "oye", "ओए", "arre", "अरे",
+            "dude", "bro", "भैया", "भाय", "uncle", "अंकल",
+            "oa", "ओए", "re", "रे", "hey", "arre re",
+            "sir", "सर", "madam", "मैडम", "per", "पर", "par", "पार"
+        )
+
+        // ============ PATTERN GROUPS ============
+
+        // GROUP 1: "[name/number] ko call/phone [action]"
+        val patterns1 = listOf(
+            Regex(
+                "([\\p{L}\\d\\s\\-+]+?)\\s*(?:ko|को)\\s*(?:call|phone|कॉल|फोन)\\s*(?:laga|लगा|lag|लग|lagao|लगाओ|kar|कर|krde|karo|करो)?\\s*(?:de|दे|dega|yrrr|yrr|please|fatafat)?\\s*(?:yaar|यार|bhai|भाई|oye|ओए|arre|अरे|dude|bro|भैया)?\\s*$",
+                RegexOption.IGNORE_CASE
+            ),
+        )
+
+        // GROUP 2: "call/phone [name/number] [action]"
+        val patterns2 = listOf(
+            Regex(
+                "(?:call|phone|dial|कॉल|फोन)\\s+(?:to|को)?\\s*([\\p{L}\\d\\s\\-+]+?)\\s*(?:ko|को)?\\s*(?:laga|लगा|lag|लग|lagao|लगाओ|kar|कर|krde|karo|करो|kr)?\\s*(?:de|दे|dega|now|अभी|please|yrrr|fatafat|jaldi|जल्दी)?\\s*(?:yaar|यार|bhai|भाई|oye|ओए|arre|अरे|dude|bro|भैया)?\\s*$",
+                RegexOption.IGNORE_CASE
+            ),
+        )
+
+        // GROUP 3: "[name/number] phone/call [action]"
+        val patterns3 = listOf(
+            Regex(
+                "^([\\p{L}\\d\\s\\-+]+?)\\s+(?:call|phone|कॉल|फोन)\\s*(?:kar|कर|krde|karo|करो|laga|लगा)?\\s*(?:de|दे|dega|yrrr)?\\s*$",
+                RegexOption.IGNORE_CASE
+            ),
+        )
+
+        // GROUP 4: "call/phone [name/number] karo/krde/kar"
+        val patterns4 = listOf(
+            Regex(
+                "(?:call|phone|कॉल|फोन)\\s+([\\p{L}\\d\\s\\-+]+?)\\s+(?:karo|करो|krde|कर दे|kar|कर|करूँगा|करूंगा)\\s*(?:kya|क्या|dega|dogi)?\\s*$",
+                RegexOption.IGNORE_CASE
+            ),
+        )
+
+        // GROUP 5: "[name/number] ko [action] phone/call"
+        val patterns5 = listOf(
+            Regex(
+                "([\\p{L}\\d\\s\\-+]+?)\\s*(?:ko|को)\\s+(?:laga|लगा|lag|लग|kar|कर|krde)?\\s*(?:phone|फोन|call|कॉल)\\s*(?:yrrr|fatafat)?\\s*$",
+                RegexOption.IGNORE_CASE
+            ),
+        )
+
+        // GROUP 6: "[name] ko phone/call lagao/karo"
+        val patterns6 = listOf(
+            Regex(
+                "^([\\p{L}\\d\\s\\-+]+?)\\s+(?:ko|को)\\s+(?:phone|फोन|call|कॉल)\\s+(?:lagao|लगाओ|laga|लगा|karo|करो|kar|कर)\\s*$",
+                RegexOption.IGNORE_CASE
+            ),
+        )
+
+        // GROUP 7: "[name/number] call/phone [action]"
+        val patterns7 = listOf(
+            Regex(
+                "^([\\p{L}\\d\\s\\-+]+?)\\s+(?:call|phone|कॉल)(?:\\s+(?:karo|करो|kar|कर))?\\s*$",
+                RegexOption.IGNORE_CASE
+            ),
+        )
+
+        // GROUP 8: Pure number pattern - "dial 123456789" or "call 9876543210"
+        // MOST SPECIFIC - सबसे पहले check होना चाहिए
+        val patterns8 = listOf(
+            Regex(
+                "(?:call|phone|dial|कॉल|फोन)\\s+([\\d\\s\\-+]+?)(?:\\s+(?:to|का|लगाओ|lagao|karo|करो|per|पर))?\\s*$",
+                RegexOption.IGNORE_CASE
+            ),
+        )
+
+        // ============ TRY ALL PATTERNS - ORDER MATTERS! ============
+        // Most specific (numbers) first, then general patterns
+
+        val allPatterns = listOf(
+            patterns8 to "GROUP8_NUMBERS",
+            patterns6 to "GROUP6",
+            patterns1 to "GROUP1",
+            patterns2 to "GROUP2",
+            patterns4 to "GROUP4",
+            patterns3 to "GROUP3",
+            patterns5 to "GROUP5",
+            patterns7 to "GROUP7"
+        )
+
+        for ((patternList, groupName) in allPatterns) {
+            for (pattern in patternList) {
+                pattern.find(cleanedCommand)?.let { match ->
+                    var contact = match.groupValues[1].trim()
+
+                    // ============ AGGRESSIVE CLEANING ============
+
+                    // Remove ALL action words from contact name
+                    for (actionWord in actionWords) {
+                        contact = contact.replace(Regex("\\b$actionWord\\b", RegexOption.IGNORE_CASE), " ").trim()
+                    }
+
+                    // Remove particles at START
+                    contact = contact.replaceFirst(
+                        "^(?:to|the|एक|ek|bhai|भाई|oye|ओए|arre|अरे|please|जल्दी|iska|oa)\\s+".toRegex(RegexOption.IGNORE_CASE),
+                        ""
+                    ).trim()
+
+                    // Remove particles at END
+                    contact = contact.replaceFirst(
+                        "\\s+(?:ko|को|please|जल्दी|bhai|भाई|uncle|अंकल)\\s*$".toRegex(RegexOption.IGNORE_CASE),
+                        ""
+                    ).trim()
+
+                    // Remove casual suffixes
+                    contact = contact
+                        .replace(Regex("\\s+(?:yrrr|yrr|please|jaldi|जल्दी|fatafat|bro|भैया|kya|क्या)\\s*$", RegexOption.IGNORE_CASE), "")
+                        .replace(Regex("\\s+"), " ")
+                        .trim()
+
+                    // ============ VALIDATE ============
+
+                    if (contact.isNotEmpty() &&
+                        contact.length >= 2 &&
+                        !actionWords.any { contact.equals(it, ignoreCase = true) } &&
+                        !contact.matches(Regex("^(?:to|the)$", RegexOption.IGNORE_CASE))) {
+
+                        // For numbers, check if it's a valid phone number
+                        val isNumber = contact.matches(Regex("[\\d\\s\\-+]+"))
+                        val isValidLength = if (isNumber) contact.replace(Regex("[\\D]"), "").length >= 7 else true
+
+                        if (isValidLength) {
+                            Log.i(TAG, "✅ $groupName matched: '$contact'")
+                            return CallData(contact, true)
+                        }
+                    } else {
+                        Log.i(TAG, "⚠️ $groupName REJECTED (invalid): '$contact'")
+                    }
+                }
+            }
+        }
+
+        // ============ FALLBACK ============
+
+        // Fallback 1: Pure number - at least 7 digits
+        val fallbackNumber = Regex(
+            "(?:call|phone|dial|कॉल|फोन)?\\s*([\\d\\s\\-+]+)",
+            RegexOption.IGNORE_CASE
+        )
+        fallbackNumber.find(cleanedCommand)?.let { match ->
+            var contact = match.groupValues[1].trim()
+            val digits = contact.replace(Regex("[\\D]"), "")
+
+            if (digits.length >= 7) {
+                Log.i(TAG, "✅ FALLBACK_NUMBER matched: '$contact' (${digits.length} digits)")
+                return CallData(contact, true)
+            }
+        }
+
+        // Fallback 2: Named contact
+        val fallback = Regex(
+            "(?:call|phone|dial|कॉल|फोन|को|ko)\\s+(?:to|को)?\\s*([\\p{L}\\s]+?)(?:\\s+(?:kar|कर|laga|लगा|krde).*)?$",
+            RegexOption.IGNORE_CASE
+        )
+        fallback.find(cleanedCommand)?.let { match ->
+            var contact = match.groupValues[1].trim()
+
+            for (actionWord in actionWords) {
+                contact = contact.replace(Regex("\\b$actionWord\\b", RegexOption.IGNORE_CASE), " ").trim()
+            }
+
+            if (contact.isNotEmpty() && contact.length >= 2 && !actionWords.any { contact.equals(it, ignoreCase = true) }) {
+                Log.i(TAG, "✅ FALLBACK_NAME matched: '$contact'")
+                return CallData(contact, true)
+            }
+        }
+
+        Log.w(TAG, "❌ No valid pattern matched for: '$cleanedCommand'")
+        return CallData("", false)
     }
 
     private fun extractAppName(command: String): String {
