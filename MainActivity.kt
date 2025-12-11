@@ -132,7 +132,9 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.CHANGE_WIFI_STATE,
             Manifest.permission.CHANGE_NETWORK_STATE,
             Manifest.permission.READ_PHONE_STATE,
-            Manifest.permission.POST_NOTIFICATIONS
+            Manifest.permission.POST_NOTIFICATIONS,
+            "android.permission.SCHEDULE_EXACT_ALARM",
+            "android.permission.USE_EXACT_ALARM"
         )
     }
 
@@ -1994,4 +1996,5 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
 }
